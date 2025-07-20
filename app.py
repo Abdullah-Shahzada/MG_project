@@ -13,24 +13,28 @@ st.title("🤖 MG Company Knowledge Chatbot + 📊 AI Dashboard Generator")
 
 # --- Section 1: MG Apparel Chatbot ---
 st.header("🧠 MG Apparel Knowledge Chatbot")
-st.markdown("Ask any question based on MG Apparel department documents.")
+st.markdown("Upload your knowledge base (CSV) and ask questions.")
 
-# --- Load Knowledge Base ---
-csv_path = r"/Users/abidcomputers/Downloads/MG project/department_faq_dataset.csv"
+# --- Upload Knowledge Base ---
+kb_file = st.file_uploader("📁 Upload Knowledge Base (CSV)", type=["csv"])
+MG_KNOWLEDGE_BASE = ""
 
-try:
-    df = pd.read_csv(csv_path)
-    st.success("✅ MG Knowledge Base loaded from local file!")
+if kb_file:
+    try:
+        kb_df = pd.read_csv(kb_file)
+        st.success("✅ Knowledge base uploaded successfully!")
 
-    if 'Answer' in df.columns:
-        MG_KNOWLEDGE_BASE = "\n".join(df['Answer'].astype(str))
-    elif 'Content' in df.columns:
-        MG_KNOWLEDGE_BASE = "\n".join(df['Content'].astype(str))
-    else:
-        MG_KNOWLEDGE_BASE = "\n".join(df.astype(str).agg(" ".join, axis=1))
-except Exception as e:
-    st.error(f"❌ Failed to load the knowledge base. Error: {e}")
-    MG_KNOWLEDGE_BASE = ""
+        with st.expander("📂 Preview Knowledge Base"):
+            st.dataframe(kb_df.head())
+
+        if 'Answer' in kb_df.columns:
+            MG_KNOWLEDGE_BASE = "\n".join(kb_df['Answer'].astype(str))
+        elif 'Content' in kb_df.columns:
+            MG_KNOWLEDGE_BASE = "\n".join(kb_df['Content'].astype(str))
+        else:
+            MG_KNOWLEDGE_BASE = "\n".join(kb_df.astype(str).agg(" ".join, axis=1))
+    except Exception as e:
+        st.error(f"❌ Failed to read uploaded knowledge base. Error: {e}")
 
 # --- Ask Question Section ---
 if MG_KNOWLEDGE_BASE:
@@ -70,7 +74,7 @@ st.markdown("---")
 st.header("📊 AI Dashboard Generator")
 st.markdown("Upload a CSV and describe the dashboard you'd like.")
 
-uploaded_file = st.file_uploader("📁 Upload your CSV file", type=["csv"])
+uploaded_file = st.file_uploader("📁 Upload your CSV file", type=["csv"], key="dashboard_csv")
 
 if uploaded_file:
     try:
@@ -87,8 +91,6 @@ if uploaded_file:
                 st.warning("Please enter a dashboard request.")
             else:
                 with st.spinner("🤖 Generating your dashboard..."):
-
-                    # Prompt for code generation
                     ai_prompt = f"""
 You are a Python data visualization assistant.
 
@@ -105,7 +107,6 @@ Dataset Sample:
 {data.head(5).to_csv(index=False)}
 """
 
-
                     response = client.chat.completions.create(
                         model="llama-3.1-8b-instant",
                         messages=[{"role": "user", "content": ai_prompt}],
@@ -116,7 +117,6 @@ Dataset Sample:
                     generated_code = response.choices[0].message.content.strip()
                     clean_code = generated_code.replace("```python", "").replace("```", "").strip()
 
-                    # Execute the code quietly
                     try:
                         exec_globals = {
                             "data": data,
@@ -128,6 +128,5 @@ Dataset Sample:
                         st.success("✅ Dashboard created successfully!")
                     except Exception as e:
                         st.error(f"⚠️ Error while creating dashboard: {e}")
-
     except Exception as e:
         st.error(f"❌ Error reading uploaded CSV: {e}")
